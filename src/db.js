@@ -4,6 +4,10 @@ const { Pool } = pg;
 
 let pool = null;
 
+function ts() {
+  return new Date().toISOString();
+}
+
 function isEnabled() {
   return pool != null;
 }
@@ -11,11 +15,17 @@ function isEnabled() {
 export async function initDb() {
   const url = process.env.DATABASE_URL?.trim();
   if (!url) {
-    console.error("Нет DATABASE_URL в .env — бот без Postgres");
+    console.error(ts(), "Нет DATABASE_URL в .env — бот без Postgres");
     return;
   }
 
-  const next = new Pool({ connectionString: url });
+  const next = new Pool({
+    connectionString: url,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 10000,
+    statement_timeout: 5000,
+  });
+
   try {
     await next.query("SELECT 1");
     await next.query(`
@@ -36,9 +46,9 @@ export async function initDb() {
       )
     `);
     pool = next;
-    console.log("Postgres: таблицы users и updates готовы");
+    console.log(ts(), "Postgres: таблицы users и updates готовы");
   } catch (err) {
-    console.error("Postgres при старте:", err.message);
+    console.error(ts(), "Postgres при старте:", err.message);
     pool = null;
     try {
       await next.end();
@@ -56,7 +66,7 @@ export async function insertUpdate(userId, update) {
       [userId ?? null, JSON.stringify(update)]
     );
   } catch (err) {
-    console.error("Postgres INSERT updates:", err.message);
+    console.error(ts(), "Postgres INSERT updates:", err.message);
   }
 }
 
@@ -78,6 +88,6 @@ export async function upsertUser(from) {
       ]
     );
   } catch (err) {
-    console.error("Postgres UPSERT users:", err.message);
+    console.error(ts(), "Postgres UPSERT users:", err.message);
   }
 }

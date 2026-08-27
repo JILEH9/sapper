@@ -5,14 +5,31 @@ import { SIZES, createGame, openCell, fromPacked } from "./game.js";
 import { unpackOpen } from "./codec.js";
 import { renderPicker, renderBoard } from "./render.js";
 
+function now() {
+  return new Date().toISOString();
+}
+
+function log(...args) {
+  console.log(now(), ...args);
+}
+
+function logErr(...args) {
+  console.error(now(), ...args);
+}
+
+function errDetail(err) {
+  const cause = err?.cause?.message;
+  return cause ? `${err.message} (${cause})` : err?.message ?? String(err);
+}
+
 const token = process.env.BOT_TOKEN?.trim();
 const apiUrl = process.env.TELEGRAM_API_URL?.trim();
 if (!token) {
-  console.error("Нет BOT_TOKEN в .env");
+  logErr("Нет BOT_TOKEN в .env");
   process.exit(1);
 }
 if (!apiUrl) {
-  console.error("Нет TELEGRAM_API_URL в .env");
+  logErr("Нет TELEGRAM_API_URL в .env");
   process.exit(1);
 }
 
@@ -32,7 +49,9 @@ async function startGame(chatId, messageId, sizeKey) {
 }
 
 async function handleStart(msg) {
-  await upsertUser(msg.from);
+  upsertUser(msg.from).catch((err) => {
+    logErr("upsertUser:", errDetail(err));
+  });
   await showPicker(msg.chat.id, null);
 }
 
@@ -132,7 +151,7 @@ async function handleUpdate(update) {
 
 async function poll() {
   await api.deleteWebhook();
-  console.log("polling…");
+  log("polling…");
   let offset = 0;
 
   for (;;) {
@@ -141,7 +160,7 @@ async function poll() {
       updates = await api.getUpdates({ offset, timeout: 30 });
     } catch (err) {
       if (err.name === "AbortError") continue;
-      console.error("getUpdates:", err.message);
+      logErr("getUpdates:", errDetail(err));
       await new Promise((r) => setTimeout(r, 2000));
       continue;
     }
@@ -149,11 +168,11 @@ async function poll() {
     for (const update of updates) {
       offset = update.update_id + 1;
       if (!isPrivateUpdate(update)) continue;
+
       try {
-        await insertUpdate(updateUserId(update), update);
         await handleUpdate(update);
       } catch (err) {
-        console.error("update", update.update_id, err.message);
+        logErr("update", update.update_id, errDetail(err));
         if (update.callback_query?.id) {
           try {
             await api.answerCallback(update.callback_query.id);
@@ -162,6 +181,10 @@ async function poll() {
           }
         }
       }
+
+      insertUpdate(updateUserId(update), update).catch((err) => {
+        logErr("insertUpdate", update.update_id, errDetail(err));
+      });
     }
   }
 }
@@ -169,6 +192,6 @@ async function poll() {
 initDb()
   .then(() => poll())
   .catch((err) => {
-    console.error(err);
+    logErr("fatal:", errDetail(err));
     process.exit(1);
   });
