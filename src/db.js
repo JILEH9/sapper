@@ -12,7 +12,7 @@ function isEnabled() {
 export async function initDb() {
   const url = process.env.DATABASE_URL?.trim();
   if (!url) {
-    logError("db.initDb", "Нет DATABASE_URL в .env — бот без Postgres");
+    logInfo("db.initDb", "Postgres выключен — ничего не сохраняем");
     return;
   }
 

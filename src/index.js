@@ -143,18 +143,15 @@ async function handleCallback(q) {
 }
 
 async function handleUpdate(update) {
-  const ctx = updateContext(update);
   if (update.message?.text) {
     const text = update.message.text.trim();
     if (text === "/start" || text.startsWith("/start ")) {
-      await runStep("handleUpdate.start", ctx, () => handleStart(update.message));
+      await handleStart(update.message);
     }
     return;
   }
   if (update.callback_query) {
-    await runStep("handleUpdate.callback", ctx, () =>
-      handleCallback(update.callback_query)
-    );
+    await handleCallback(update.callback_query);
   }
 }
 
@@ -183,7 +180,9 @@ async function poll() {
       try {
         await handleUpdate(update);
       } catch (err) {
-        logError("poll.handleUpdate", errDetail(err), ctx);
+        if (!err.logged) {
+          logError("poll.handleUpdate", errDetail(err), ctx);
+        }
         if (update.callback_query?.id) {
           try {
             await api.answerCallback(update.callback_query.id);

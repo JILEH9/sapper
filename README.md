@@ -2,12 +2,11 @@
 
 Telegram-бот «Сапёр». Репозиторий: https://github.com/JILEH9/sapper
 
-Пользователи и апдейты пишутся в PostgreSQL. Таблицы `users` и `updates` создаются при старте.
+Бот работает без базы: состояние игры живёт в сообщении. PostgreSQL опционален — если `DATABASE_URL` не задан, ничего не сохраняется.
 
 ## Требования на сервере
 
 - Docker и Docker Compose v2 (`docker compose`)
-- PostgreSQL, доступный по сети с сервера бота (в compose БД **не** поднимается — только `DATABASE_URL`)
 
 ```bash
 docker --version
@@ -35,16 +34,26 @@ nano .env
 ```env
 BOT_TOKEN=123456:AA...токен_от_BotFather
 TELEGRAM_API_URL=https://api.telegram.org
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME
 ```
 
 | Переменная | Описание |
 |---|---|
 | `BOT_TOKEN` | Токен бота от [@BotFather](https://t.me/BotFather) |
 | `TELEGRAM_API_URL` | Базовый URL Bot API (`https://api.telegram.org` или свой прокси) |
-| `DATABASE_URL` | Строка подключения к Postgres |
 
-Пример `DATABASE_URL`:
+Файл `.env` в git не коммитится.
+
+### Postgres (опционально, скрыто по умолчанию)
+
+По умолчанию `DATABASE_URL` в `.env.example` закомментирован. Без него бот работает, users/updates не пишутся.
+
+Чтобы включить запись, раскомментируй в `.env`:
+
+```env
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME
+```
+
+Пример:
 
 ```env
 DATABASE_URL=postgresql://postgres:secret@192.168.1.10:5432/saper
@@ -52,7 +61,7 @@ DATABASE_URL=postgresql://postgres:secret@192.168.1.10:5432/saper
 
 - Базу создай заранее: `CREATE DATABASE saper;`
 - С сервера бота должен открываться порт Postgres (часто `5432`)
-- Файл `.env` в git не коммитится
+- Таблицы `users` и `updates` создаются при старте
 
 ### 3. Запуск
 

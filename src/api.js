@@ -10,13 +10,35 @@ export function createApi(token, baseUrl) {
         : null;
 
     try {
-      const res = await fetch(url(method), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: ctrl.signal,
-      });
-      const data = await res.json();
+      let res;
+      try {
+        res = await fetch(url(method), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: ctrl.signal,
+        });
+      } catch (err) {
+        if (err.name === "AbortError") throw err;
+        const netErr = new Error(`fetch failed: ${method} -> ${base}`);
+        netErr.cause = err;
+        netErr.code = err.code;
+        netErr.apiMethod = method;
+        throw netErr;
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        const parseErr = new Error(
+          `${method} bad response: HTTP ${res.status} (not JSON)`
+        );
+        parseErr.apiMethod = method;
+        parseErr.code = err.code;
+        throw parseErr;
+      }
+
       if (!data.ok) {
         const desc = data.description || res.statusText;
         if (
@@ -27,6 +49,7 @@ export function createApi(token, baseUrl) {
         }
         const err = new Error(`${method} failed: ${desc}`);
         err.payload = data;
+        err.apiMethod = method;
         throw err;
       }
       return data.result;

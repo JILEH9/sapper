@@ -15,9 +15,12 @@ function fmtCtx(ctx = {}) {
 }
 
 export function errDetail(err) {
-  const cause = err?.cause?.message;
-  const base = err?.message ?? String(err);
-  return cause ? `${base} (${cause})` : base;
+  const parts = [err?.message ?? String(err)];
+  if (err?.apiMethod) parts.push(`method=${err.apiMethod}`);
+  if (err?.code) parts.push(`code=${err.code}`);
+  if (err?.cause?.code) parts.push(`causeCode=${err.cause.code}`);
+  if (err?.cause?.message) parts.push(`cause=${err.cause.message}`);
+  return parts.join(" | ");
 }
 
 export function updateContext(update) {
@@ -71,7 +74,11 @@ export async function runStep(where, ctx, fn) {
   try {
     return await fn();
   } catch (err) {
-    logError(where, errDetail(err), ctx);
+    if (!err.logged) {
+      logError(where, errDetail(err), ctx);
+      err.logged = true;
+      err.logWhere = where;
+    }
     throw err;
   }
 }
